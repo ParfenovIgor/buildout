@@ -61,6 +61,8 @@ except ValueError:
     md5 = partial(md5_original, usedforsecurity=False)
 
 
+# ??question Why to use top level statements and function definitions simultaneously? question??
+# ??question How to guess the fields in argument of untyped function, if we use them? question??
 def command(method):
     method.buildout_command = True
     return method
@@ -77,8 +79,10 @@ def _print_options(sep=' ', end='\n', file=None):
     return sep, end, file
 
 def print_(*args, **kw):
+    # ??question How is it possible to feed the function with incorrect number of arguments in non ML-type language? question??
     sep, end, file = _print_options(**kw)
     if file is None:
+        # ??question The standard output may be closed. question??
         file = sys.stdout
     file.write(sep.join(map(str, args))+end)
 
@@ -105,6 +109,7 @@ def _annotate_section(section, source):
 
 
 class SectionKey(object):
+    # ??question How to understand which field does the class have, if they are not declared? question??
     def __init__(self, value, source):
         self.history = []
         self.value = value
@@ -114,6 +119,7 @@ class SectionKey(object):
     def source(self):
         return self.history[-1].source
 
+    # ??question It doesn't seem possible to analyze local function which quite heavily use fields of untyped structure. question??
     def overrideValue(self, sectionkey):
         self.value = sectionkey.value
         if sectionkey.history[-1].operation not in ['ADD', 'REMOVE']:
@@ -253,6 +259,7 @@ def _print_annotate(data, verbose, chosen_sections, basedir):
         if (not chosen_sections) or (section in chosen_sections):
             print_()
             print_('[%s]' % section)
+            # ??question I don't know, if the keys variable is cloned, or not, and thus the passed to this function variable is changed. Both cases are bad. question??
             keys = list(data[section].keys())
             keys.sort()
             for key in keys:
@@ -260,6 +267,7 @@ def _print_annotate(data, verbose, chosen_sections, basedir):
                 sectionkey.printAll(key, basedir, verbose)
 
 
+# ??question Capturing key value from section.items() looks suspicious: either there are no wildcard bind in language or the programmer wanted to empasize the context of untyped value. question??
 def _unannotate_section(section):
     return {key: entry.value for key, entry in section.items()}
 
@@ -275,6 +283,7 @@ def _format_picked_versions(picked_versions, required_by):
         if dist_ in required_by:
             required_output.append('')
             required_output.append('# Required by:')
+            # ??question Wouldn't this change the passed required_by variable? question??
             for req_ in sorted(required_by[dist_]):
                 required_output.append('# '+req_)
             target = required_output
@@ -310,6 +319,7 @@ _buildout_default_options = _annotate_section({
     }, 'DEFAULT_VALUE')
 
 
+# ??question Is storage of config file name as a constant value a good idea? question??
 def _get_user_config():
     buildout_home = os.path.join(os.path.expanduser('~'), '.buildout')
     buildout_home = os.environ.get('BUILDOUT_HOME', buildout_home)
@@ -319,15 +329,18 @@ def _get_user_config():
 @commands
 class Buildout(DictMixin):
 
+    # ??question The field of classes were not declared before. Why now it is even defined? question??
     COMMANDS = set()
 
     def __init__(self, config_file, cloptions,
                  use_user_defaults=True,
                  command=None, args=()):
 
+        # ??question The __doing__ variable is never used. What is the purpose of it? question??
         __doing__ = 'Initializing.'
 
         # default options
+        # ??question Storage of options as global object and cloning it each time looks wierd. question??
         _buildout_default_options_copy = copy.deepcopy(
             _buildout_default_options)
         data = dict(buildout=_buildout_default_options_copy)
@@ -342,6 +355,7 @@ class Buildout(DictMixin):
                     # Sigh. This model of a buildout instance
                     # with methods is breaking down. :(
                     config_file = None
+                    # ??question It was surprising, that dict is nested. question??
                     data['buildout']['directory'] = SectionKey(
                         '.', 'COMPUTED_VALUE')
                 else:
@@ -356,11 +370,14 @@ class Buildout(DictMixin):
                     os.path.dirname(config_file), 'COMPUTED_VALUE')
 
         cloptions = dict(
+            # ??question No commas between dict fields and wierd indentation rules in comprehensions made me freeze. question??
             (section, dict((option, SectionKey(value, 'COMMAND_LINE_VALUE'))
                            for (_, option, value) in v))
+            # ??question How does building dict by passing to it comprehension, which uses this dict, behaves? question??
             for (section, v) in itertools.groupby(sorted(cloptions),
                                                   lambda v: v[0])
             )
+        # ??question The cloptions has further usage only in some case in further block. Why not to clone it there? question??
         override = copy.deepcopy(cloptions.get('buildout', {}))
 
         # load user defaults, which override defaults
@@ -403,6 +420,7 @@ class Buildout(DictMixin):
 
         # apply command-line options
         data = _update(data, cloptions)
+        # ??question By this moment it seems impossible to understand, what happends with data variable, which investigating the function. question??
 
         # Set up versions section, if necessary
         if 'versions' not in data['buildout']:
@@ -420,6 +438,7 @@ class Buildout(DictMixin):
         versions.update(
             dict((k, SectionKey(v, 'DEFAULT_VALUE'))
                  for (k, v) in (
+                     # ??question Is it a good place to manipulate data at this level? question??
                      # Prevent downgrading due to prefer-final:
                      ('zc.buildout',
                       '>='+pkg_resources.working_set.find(
@@ -435,6 +454,7 @@ class Buildout(DictMixin):
         # and considering the location of the configuration file that generated
         # the setting as the base path, falling back to the main configuration
         # file location
+        # ??question It seems, the code is not well abstracted, as all this login is in contructor of a class. question??
         for name in ('download-cache', 'eggs-directory', 'extends-cache'):
             if name in data['buildout']:
                 sectionkey = data['buildout'][name]
@@ -511,13 +531,16 @@ class Buildout(DictMixin):
         ## BUILDOUT ATTRIBUTES.
         ##################################################################
         # initialize some attrs and buildout directories.
+        # ??question What does this syntax mean? question??
         options = self['buildout']
 
         # now reinitialize
         links = options.get('find-links', '')
+        # ??question Simple type derivation says, that we apply binary functions to string, list and tuple. Looks as too weak typisation, as I can't understand, how these functions have to work with such types. question??
         self._links = links and links.split() or ()
 
         allow_hosts = options['allow-hosts'].split('\n')
+        # ??question For me the main aim of tuple is known size, and comprehension in tuple doesn't make sense. question??
         self._allow_hosts = tuple([host.strip() for host in allow_hosts
                                    if host.strip() != ''])
 
@@ -603,6 +626,7 @@ class Buildout(DictMixin):
             return name
         return os.path.join(self._buildout_dir, name)
 
+    # ??question What does @command mean? question??
     @command
     def bootstrap(self, args):
         __doing__ = 'Bootstrapping.'
@@ -737,6 +761,7 @@ class Buildout(DictMixin):
             uninstall_missing = True
 
         # load and initialize recipes
+        # ??question It makes sense, that such a contruction doesn't change anything and returns a result. Either it actually changes, or its result isn't used. question??
         [self[part]['recipe'] for part in install_parts]
         if not install_args:
             install_parts = self._parts
@@ -744,6 +769,7 @@ class Buildout(DictMixin):
         if self._log_level < logging.DEBUG:
             sections = list(self)
             sections.sort()
+            # ??question If it is used to print end of line, why not to use formatted print? question??
             print_()
             print_('Configuration data:')
             for section in sorted(self._data):
@@ -864,6 +890,7 @@ class Buildout(DictMixin):
                     installed_files = [installed_files]
                 else:
                     installed_files = list(installed_files)
+                # ??question It seems, that tuple and list here are the same types. question??
 
             installed_part_options[part] = saved_options
             saved_options['__buildout_installed__'
@@ -995,6 +1022,7 @@ class Buildout(DictMixin):
         for part in parts:
             options = self.get(part)
             if options is None:
+                # ??question Not a good syntax contruction. question??
                 options = self[part] = {}
             recipe, entry = _recipe(options)
             req = pkg_resources.Requirement.parse(recipe)
@@ -1018,12 +1046,14 @@ class Buildout(DictMixin):
 
             return result, True
         else:
+            # ??question Quite strange indentation rules. question??
             return ({'buildout': self.Options(self, 'buildout', {'parts': ''})},
                     False,
                     )
 
     def _uninstall(self, installed):
         for f in installed.split('\n'):
+            # ??question I guess, the following if will execute this block if f is either empty string or null. Isn't it more clear to use methor empty? question??
             if not f:
                 continue
             f = self._buildout_path(f)
@@ -1070,6 +1100,7 @@ class Buildout(DictMixin):
         for part in installed_options['buildout']['parts'].split():
             print_(file=f)
             _save_options(part, installed_options[part], f)
+        # ??question Won't the file be automatically closed, when the reference goes out of scope? question??
         f.close()
 
     def _error(self, message, *args):
@@ -1080,9 +1111,11 @@ class Buildout(DictMixin):
         if timeout != '':
             try:
                 timeout = int(timeout)
+                # ??question What is the purpose of local import statement? question??
                 import socket
                 self._logger.info(
                     'Setting socket time out to %d seconds.', timeout)
+                # ??question To which socket instance does this statement apply? I hope, it is not a global setting. question??
                 socket.setdefaulttimeout(timeout)
             except ValueError:
                 self._logger.warning("Default socket timeout is used !\n"
@@ -1172,6 +1205,7 @@ class Buildout(DictMixin):
                                  "buildout command.")
             return
 
+        # ??question The indentation used in this comprehension looks weird. question??
         self._logger.info("Upgraded:\n  %s;\nRestarting.",
                           ",\n  ".join([("%s version %s"
                                        % (dist.project_name, dist.version)
@@ -1202,6 +1236,7 @@ class Buildout(DictMixin):
 
         # Restart
         args = sys.argv[:]
+        # ??question If this __debug__ is set while running the python interpreter, why does the args depend on it. If not, what is the purpose of the if statement? question??
         if not __debug__:
             args.insert(0, '-O')
         args.insert(0, sys.executable)
@@ -1240,6 +1275,7 @@ class Buildout(DictMixin):
             zc.buildout.easy_install.clear_index_cache()
 
             for ep in pkg_resources.iter_entry_points('zc.buildout.extension'):
+                # ??question What does this syntax mean? Is load() function returns a function? question??
                 ep.load()(self)
 
     def _unload_extensions(self):
@@ -1302,6 +1338,7 @@ class Buildout(DictMixin):
             args = [sys.executable, tsetup] + args
             zc.buildout.easy_install.call_subprocess(args)
         finally:
+            # ??question Why do we need to explicitly close the descriptor? Isn't drop handled automatically? question??
             os.close(fd)
             os.remove(tsetup)
 
@@ -1311,6 +1348,7 @@ class Buildout(DictMixin):
 
     @command
     def query(self, args=None):
+        # ??question Why the list is passed in args, if only a single value is needed? question??
         if args is None or len(args) != 1:
             _error('The query command requires a single argument.')
         option = args[0]
@@ -1377,6 +1415,7 @@ class Buildout(DictMixin):
         if name in self._raw:
             raise KeyError("Section already exists", name)
         self._raw[name] = dict((k, str(v)) for (k, v) in data.items())
+        # ??question What does this statement mean? question??
         self[name] # Add to parts
 
     def parse(self, data):
@@ -1527,6 +1566,7 @@ class Options(DictMixin):
         self._cooked[option] = v
 
     def get(self, option, default=None, seen=None):
+        # ??question Why not to check, if there is a key, with some method? question??
         try:
             return self._data[option]
         except KeyError:
@@ -1556,6 +1596,7 @@ class Options(DictMixin):
         self._data[option] = v
         return v
 
+    # ??question Why the fields of the class are defined between methods? question??
     _template_split = re.compile('([$]{[^}]*})').split
     _simple = re.compile('[-a-zA-Z0-9 ._]+$').match
     _valid = re.compile(r'\${[-a-zA-Z0-9 ._]*:[-a-zA-Z0-9 ._]+}$').match
@@ -1637,6 +1678,7 @@ class Options(DictMixin):
     def __len__(self):
         return len(self.keys())
 
+    # ??question Why the clone is called copy? It is better to distinguish them. question??
     def copy(self):
         result = copy.deepcopy(self._raw)
         result.update(self._cooked)
@@ -1716,6 +1758,7 @@ def _save_option(option, value, f):
 
 def _save_options(section, options, f):
     print_('[%s]' % section, file=f)
+    # ??question How to understand, if items() function returns a reference, and the options variable is not changed? question??
     items = list(options.items())
     items.sort()
     for option, value in items:
@@ -1751,6 +1794,7 @@ def _default_globals():
     # OF SUCH DAMAGE.
 
     # default available modules, explicitly re-imported locally here on purpose
+    # ??question If we import the same modules again, because we wouldn't like to bother this class's dependencies, why not to consider store it in a separate module? question??
     import sys
     import os
     import platform
@@ -1901,6 +1945,7 @@ def _open(
 
 
 ignore_directories = '.svn', 'CVS', '__pycache__', '.git'
+# ??question This mutable global variable is used only in one function. Why it is global then? question??
 _dir_hashes = {}
 def _dir_hash(dir):
     dir_hash = _dir_hashes.get(dir, None)
@@ -1983,6 +2028,7 @@ def _update_section(in1, s2):
     _update_verbose(s1, s2)
     return s1
 
+# ??question The function changes the passed variables. Why not to mention it? question??
 def _update_verbose(s1, s2):
     for key, v2 in s2.items():
         if key in s1:
@@ -2014,6 +2060,7 @@ def _doing():
     message = str(v)
     doing = []
     while tb is not None:
+        # ??question This way of using a variable of the object of some class is awful. question??
         d = tb.tb_frame.f_locals.get('__doing__')
         if d:
             doing.append(d)

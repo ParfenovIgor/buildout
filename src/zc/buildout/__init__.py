@@ -13,6 +13,7 @@
 ##############################################################################
 """Buildout package
 """
+# ??question Why import order is a problem in such a great language? question??
 # do not change the import order
 # deleting the spec_for_pip hack needs to be done before importing pip
 # see https://github.com/pypa/pip/issues/8761 to understand
@@ -30,6 +31,7 @@ except ImportError:
 import pip  # NOQA
 
 import warnings
+# ??question Why not to let the user be aware of the deprecation? question??
 from pkg_resources import PkgResourcesDeprecationWarning
 warnings.filterwarnings('ignore', category=PkgResourcesDeprecationWarning)
 warnings.filterwarnings('ignore', message='Setuptools is replacing distutils.')
@@ -43,6 +45,7 @@ PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 
+# ??question Why to use top level statements and class declarations simultaneously? question??
 class UserError(Exception):
     """Errors made by a user
     """
